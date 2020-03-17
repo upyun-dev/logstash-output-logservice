@@ -23,6 +23,7 @@ class LogStash::Outputs::LogService < LogStash::Outputs::Base
   config :project, :validate=> :string, :required=> true
   config :logstore, :validate=> :string, :required=> true
   config :topic, :validate=> :string, :required=> false, :default=> ""
+  config :shard_key, :validate=> :string, :required=> false
   # if source is null, will set ip default
   config :source, :validate=> :string, :required=> true
 
@@ -75,8 +76,13 @@ class LogStash::Outputs::LogService < LogStash::Outputs::Base
     @retry = 0
     begin
       @retry += 1
-      @logclient.PutLogs(@project, @logstore, @topic, loggroup, @source.to_s)
-      @logger.info("send logs to logservice success", :logcount => loggroup.size().to_s)
+      if @shard_key.nil?
+        @logclient.PutLogs(@project, @logstore, @topic, loggroup, @source.to_s)
+        @logger.info("send logs to logservice success", :logcount => loggroup.size().to_s)
+      else
+        @logclient.PutLogs(@project, @logstore, @topic, loggroup, @source.to_s, @shard_key)
+        @logger.info("send logs to logservice with shard key success", :logcount => loggroup.size().to_s)
+      end
     rescue LogException => e
       @error_code = e.GetErrorCode()
       @error_message = e.GetErrorMessage()
